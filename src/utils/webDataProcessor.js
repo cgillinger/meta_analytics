@@ -214,6 +214,22 @@ export async function processCSVData(csvContent, shouldMergeWithExisting = false
 
             const mappedRow = mapColumnNames(row, columnMappings);
 
+            // Fallback: Meta exports sometimes have empty Swedish columns
+            // but filled English columns (positions 18-20 in header).
+            // Raw row still has the original column names as keys.
+            if (!mappedRow.account_id || mappedRow.account_id === '') {
+              const fallbackId = row['Account ID'] || row['account_id'];
+              if (fallbackId) mappedRow.account_id = fallbackId;
+            }
+            if (!mappedRow.account_name || mappedRow.account_name === '') {
+              const fallbackName = row['Account name'] || row['account_name'];
+              if (fallbackName) mappedRow.account_name = fallbackName;
+            }
+            if (!mappedRow.account_username || mappedRow.account_username === '') {
+              const fallbackUsername = row['Account username'] || row['account_username'];
+              if (fallbackUsername) mappedRow.account_username = fallbackUsername;
+            }
+
             // Tag with platform
             mappedRow._platform = platform;
 
@@ -271,6 +287,54 @@ export async function processCSVData(csvContent, shouldMergeWithExisting = false
 
             perPost.push(mappedRow);
           });
+
+          // Detect collab posts: accounts with very few posts compared to majority.
+          // A collab post appears as a "foreign" account_id among the main accounts.
+          const accountPostCounts = {};
+          for (const post of perPost) {
+            const aid = post.account_id;
+            if (!aid) continue;
+            accountPostCounts[aid] = (accountPostCounts[aid] || 0) + 1;
+          }
+
+          // Flag accounts with 1–2 posts as potential collab.
+          // Threshold of 2 catches e.g. Musik i Dalarna (2 posts) while
+          // still avoiding false positives on real accounts with few posts.
+          const collabThreshold = 2;
+
+          // Accounts whose name contains any of these terms are never flagged as collab.
+          const COLLAB_SAFE_TERMS = ['Sveriges Radio', 'P1', 'P2', 'P3', 'P4'];
+
+          // Build id → name map for safe-term lookup
+          const accountIdToName = {};
+          for (const post of perPost) {
+            if (post.account_id && post.account_name) {
+              accountIdToName[post.account_id] = post.account_name;
+            }
+          }
+
+          const collabAccountIds = new Set();
+          for (const [aid, count] of Object.entries(accountPostCounts)) {
+            if (count <= collabThreshold && Object.keys(accountPostCounts).length > 1) {
+              const name = accountIdToName[aid] || '';
+              const isSafe = COLLAB_SAFE_TERMS.some(term =>
+                name.toLowerCase().includes(term.toLowerCase())
+              );
+              if (!isSafe) collabAccountIds.add(aid);
+            }
+          }
+
+          for (const post of perPost) {
+            if (collabAccountIds.has(post.account_id)) {
+              post._isCollab = true;
+            }
+          }
+
+          for (const key in perKonto) {
+            if (collabAccountIds.has(perKonto[key].account_id)) {
+              perKonto[key]._isCollab = true;
+            }
+          }
 
           // Calculate date range
           let dateRange = { startDate: null, endDate: null };
