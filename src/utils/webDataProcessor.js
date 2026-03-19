@@ -297,10 +297,10 @@ export async function processCSVData(csvContent, shouldMergeWithExisting = false
             accountPostCounts[aid] = (accountPostCounts[aid] || 0) + 1;
           }
 
-          // Only flag accounts with a single post as potential collab.
-          // A threshold of 1 avoids false positives on real accounts that
-          // simply had few posts in the period (e.g. P4 regional stations).
-          const collabThreshold = 1;
+          // Flag accounts with 1–2 posts as potential collab.
+          // Threshold of 2 catches e.g. Musik i Dalarna (2 posts) while
+          // still avoiding false positives on real accounts with few posts.
+          const collabThreshold = 2;
 
           const collabAccountIds = new Set();
           for (const [aid, count] of Object.entries(accountPostCounts)) {
