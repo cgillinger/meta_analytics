@@ -96,7 +96,7 @@ export function StorageIndicator({ showDetails = false, compact = false, onUpdat
 
         <div className="flex justify-between text-sm">
           <span>{memoryUsage.percentUsed}% använt</span>
-          <span>{memoryUsage.totalSizeMB} MB</span>
+          <span>{memoryUsage.totalSizeMB} av {memoryUsage.maxSizeMB} MB</span>
         </div>
 
         {memoryUsage.isNearLimit && (
