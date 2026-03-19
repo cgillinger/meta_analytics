@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card, CardContent } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
@@ -126,6 +126,7 @@ const PLATFORM_TITLE = {
 const MainView = ({ data, meta, onDataProcessed }) => {
   const [selectedFields, setSelectedFields] = useState([]);
   const [activeView, setActiveView] = useState('account');
+  const [platformFilter, setPlatformFilter] = useState('all'); // 'all' | 'facebook' | 'instagram'
   const [showAddMoreData, setShowAddMoreData] = useState(false);
   const [showNewAnalysis, setShowNewAnalysis] = useState(false);
   const [memoryUsage, setMemoryUsage] = useState(null);
@@ -135,6 +136,21 @@ const MainView = ({ data, meta, onDataProcessed }) => {
 
   const platform = detectPlatformFromData(data);
   const hasDateRange = meta?.dateRange?.startDate && meta?.dateRange?.endDate;
+
+  const platformCounts = useMemo(() => {
+    if (!Array.isArray(data)) return { facebook: 0, instagram: 0 };
+    return {
+      facebook: data.filter(p => p._platform === 'facebook').length,
+      instagram: data.filter(p => p._platform === 'instagram').length,
+    };
+  }, [data]);
+
+  const hasMixedPlatforms = platformCounts.facebook > 0 && platformCounts.instagram > 0;
+
+  const filteredData = useMemo(() => {
+    if (!data || platformFilter === 'all') return data;
+    return data.filter(post => post._platform === platformFilter);
+  }, [data, platformFilter]);
 
   const getAvailableFields = () => {
     if (activeView === 'account') return ACCOUNT_VIEW_AVAILABLE_FIELDS;
@@ -158,7 +174,13 @@ const MainView = ({ data, meta, onDataProcessed }) => {
 
   useEffect(() => {
     const availableFields = Object.keys(getAvailableFields());
-    setSelectedFields(prev => prev.filter(field => availableFields.includes(field)));
+    setSelectedFields(prev => {
+      const filtered = prev.filter(field => availableFields.includes(field));
+      if (filtered.length === prev.length && filtered.every((f, i) => f === prev[i])) {
+        return prev; // Samma referens = ingen re-render
+      }
+      return filtered;
+    });
   }, [activeView]);
 
   const handleDataUploaded = (newData) => {
@@ -279,6 +301,29 @@ const MainView = ({ data, meta, onDataProcessed }) => {
         </Card>
       )}
 
+      {hasMixedPlatforms && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500 mr-1">Plattform:</span>
+          {[
+            { value: 'all', label: `Alla (${platformCounts.facebook + platformCounts.instagram})` },
+            { value: 'facebook', label: `Facebook (${platformCounts.facebook})` },
+            { value: 'instagram', label: `Instagram (${platformCounts.instagram})` },
+          ].map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setPlatformFilter(value)}
+              className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                platformFilter === value
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <Tabs value={activeView} onValueChange={setActiveView}>
         <TabsList>
           <TabsTrigger value="account">Per konto</TabsTrigger>
@@ -300,19 +345,19 @@ const MainView = ({ data, meta, onDataProcessed }) => {
         )}
 
         <TabsContent value="account">
-          <AccountView data={data} selectedFields={selectedFields} />
+          <AccountView data={filteredData} selectedFields={selectedFields} />
         </TabsContent>
 
         <TabsContent value="post">
-          <PostView data={data} selectedFields={selectedFields} />
+          <PostView data={filteredData} selectedFields={selectedFields} />
         </TabsContent>
 
         <TabsContent value="post_type">
-          <PostTypeView data={data} selectedFields={selectedFields} />
+          <PostTypeView data={filteredData} selectedFields={selectedFields} />
         </TabsContent>
 
         <TabsContent value="trend_analysis">
-          <TrendAnalysisView data={data} meta={meta} />
+          <TrendAnalysisView data={filteredData} meta={meta} />
         </TabsContent>
       </Tabs>
     </div>

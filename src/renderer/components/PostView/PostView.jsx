@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import PlatformBadge from '../ui/PlatformBadge';
 import { Card } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Info } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
-import { getValue, formatValue, formatDate, DISPLAY_NAMES } from '@/utils/columnConfig';
+import { getValue, formatValue, formatDate, DISPLAY_NAMES, ENGAGEMENT_INFO } from '@/utils/columnConfig';
 import { downloadFile, downloadExcel, openExternalLink } from '@/utils/storageService';
 
 const ALL_ACCOUNTS = 'all_accounts';
@@ -49,19 +50,31 @@ const MAX_DESCRIPTION_LENGTH = 100;
 
 const getDisplayName = (field) => POST_VIEW_AVAILABLE_FIELDS[field] || DISPLAY_NAMES[field] || field;
 
-// Plattformsbadge per inlägg
-const PlatformBadge = ({ platform }) => {
-  if (!platform) return null;
-  const isFB = platform === 'facebook';
+const getEngagementTooltip = (data) => {
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const platforms = new Set(data.map(p => p._platform).filter(Boolean));
+  if (platforms.size === 1) {
+    const p = [...platforms][0];
+    return ENGAGEMENT_INFO[p] || null;
+  }
+  return 'Engagemanget beräknas olika per plattform. FB: inkl. klick. IG: inkl. sparade & följare.';
+};
+
+const InfoTooltip = ({ text }) => {
+  const [visible, setVisible] = React.useState(false);
+  if (!text) return null;
   return (
-    <span
-      className={`inline-block px-1.5 py-0.5 text-xs font-medium rounded ${
-        isFB
-          ? 'bg-blue-100 text-blue-700'
-          : 'bg-pink-100 text-pink-700'
-      }`}
-    >
-      {isFB ? 'FB' : 'IG'}
+    <span className="relative inline-flex items-center ml-1">
+      <Info
+        className="h-3.5 w-3.5 text-gray-400 cursor-help"
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+      />
+      {visible && (
+        <span className="absolute left-5 top-0 z-50 w-72 rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white shadow-lg">
+          {text}
+        </span>
+      )}
     </span>
   );
 };
@@ -92,25 +105,26 @@ const PostView = ({ data, selectedFields }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selectedAccount, setSelectedAccount] = useState(ALL_ACCOUNTS);
-  const [uniqueAccounts, setUniqueAccounts] = useState([]);
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
 
-  // Avgör om data innehåller blandade plattformar
-  const hasMixedPlatforms = React.useMemo(() => {
+  const engagementTooltip = useMemo(() => getEngagementTooltip(data), [data]);
+  const hasMixedData = useMemo(() => {
     if (!Array.isArray(data)) return false;
     const platforms = new Set(data.map(p => p._platform).filter(Boolean));
     return platforms.size > 1;
   }, [data]);
 
-  useEffect(() => {
-    if (data && Array.isArray(data)) {
-      const accountNamesSet = new Set();
-      for (const post of data) {
-        const accountName = getValue(post, 'account_name');
-        if (accountName) accountNamesSet.add(accountName);
-      }
-      setUniqueAccounts(Array.from(accountNamesSet).sort());
+  // Map accountName → platform (sista träff vinner om blandat)
+  const uniqueAccounts = useMemo(() => {
+    if (!data || !Array.isArray(data)) return [];
+    const map = {};
+    for (const post of data) {
+      const name = getValue(post, 'account_name');
+      if (name) map[name] = post._platform || null;
     }
+    return Object.entries(map)
+      .map(([name, platform]) => ({ name, platform }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [data]);
 
   useEffect(() => {
@@ -309,8 +323,13 @@ const PostView = ({ data, selectedFields }) => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_ACCOUNTS}>Alla konton</SelectItem>
-              {uniqueAccounts.map(account => (
-                <SelectItem key={account} value={account}>{account}</SelectItem>
+              {uniqueAccounts.map(({ name, platform }) => (
+                <SelectItem key={name} value={name}>
+                  <span className="flex items-center gap-2">
+                    {name}
+                    <PlatformBadge platform={platform} />
+                  </span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -353,7 +372,9 @@ const PostView = ({ data, selectedFields }) => {
                 return (
                   <TableHead key={field} className="w-28 cursor-pointer hover:bg-muted/50" onClick={() => handleSort(field)}>
                     <div className="flex items-center justify-end">
-                      {getDisplayName(field)} {getSortIcon(field)}
+                      {getDisplayName(field)}
+                      {field === 'engagement' && <InfoTooltip text={engagementTooltip} />}
+                      {getSortIcon(field)}
                     </div>
                   </TableHead>
                 );
@@ -404,9 +425,16 @@ const PostView = ({ data, selectedFields }) => {
                     )}
                     {selectedFields.map(field => {
                       if (['description', 'publish_time', 'account_name', 'post_type'].includes(field)) return null;
+                      const showMixedIcon = field === 'engagement' && hasMixedData;
+                      const mixedTip = showMixedIcon
+                        ? (post._platform === 'facebook' ? ENGAGEMENT_INFO.facebook : ENGAGEMENT_INFO.instagram)
+                        : null;
                       return (
                         <TableCell key={field} className="text-right">
-                          {renderFieldValue(post, field)}
+                          <span className="inline-flex items-center justify-end gap-1">
+                            {renderFieldValue(post, field)}
+                            {showMixedIcon && <InfoTooltip text={mixedTip} />}
+                          </span>
                         </TableCell>
                       );
                     })}
