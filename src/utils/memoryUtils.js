@@ -38,6 +38,7 @@ export function calculateMemoryUsage(fileMetadataList, postViewData, accountView
 
   return {
     totalSize: totalDataSize,
+    maxSizeMB: (STORAGE_LIMITS.UNIFIED / (1024 * 1024)).toFixed(0),
     totalSizeMB: (totalDataSize / (1024 * 1024)).toFixed(2),
     remainingMB: (remainingBytes / (1024 * 1024)).toFixed(2),
     postViewSize,

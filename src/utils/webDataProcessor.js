@@ -296,8 +296,23 @@ export async function processCSVData(csvContent, shouldMergeWithExisting = false
           // still avoiding false positives on real accounts with few posts.
           const collabThreshold = 2;
 
-          // Accounts whose name contains any of these terms are never flagged as collab.
+          // Partial terms — any account whose name contains these is never flagged.
+          // Catches future accounts like "P4 Nyland Sveriges Radio" automatically.
           const COLLAB_SAFE_TERMS = ['Sveriges Radio', 'P1', 'P2', 'P3', 'P4'];
+
+          // Known SR accounts (exact match) that don't match the partial terms above.
+          const KNOWN_ACCOUNTS = new Set([
+            'Radiosporten',
+            'Nyheter från Ekot',
+            'Berwaldhallen',
+            'Radiokorrespondenterna',
+            'Radiokorrespondenterna Kina',
+            'Det politiska spelet',
+            'Europapodden',
+            'Mats Nileskär',
+            'Radio Sweden Farsi_Dari',
+            'راديو السويد',
+          ].map(n => n.toLowerCase()));
 
           // Build id → name map for safe-term lookup
           const accountIdToName = {};
@@ -310,10 +325,9 @@ export async function processCSVData(csvContent, shouldMergeWithExisting = false
           const collabAccountIds = new Set();
           for (const [aid, count] of Object.entries(accountPostCounts)) {
             if (count <= collabThreshold && Object.keys(accountPostCounts).length > 1) {
-              const name = accountIdToName[aid] || '';
-              const isSafe = COLLAB_SAFE_TERMS.some(term =>
-                name.toLowerCase().includes(term.toLowerCase())
-              );
+              const name = (accountIdToName[aid] || '').toLowerCase();
+              const isSafe = KNOWN_ACCOUNTS.has(name) ||
+                COLLAB_SAFE_TERMS.some(term => name.includes(term.toLowerCase()));
               if (!isSafe) collabAccountIds.add(aid);
             }
           }
