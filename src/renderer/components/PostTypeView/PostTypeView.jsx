@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import PlatformBadge from '../ui/PlatformBadge';
 import { Card } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, AlertCircle, PieChart as PieChartIcon, Copy, Check } from 'lucide-react';
@@ -182,12 +183,14 @@ const PostTypeView = ({ data, selectedFields }) => {
 
   const uniqueAccounts = useMemo(() => {
     if (!data || !Array.isArray(data)) return [];
-    const accountNamesSet = new Set();
+    const map = {};
     for (const post of data) {
-      const accountName = getValue(post, 'account_name');
-      if (accountName) accountNamesSet.add(accountName);
+      const name = getValue(post, 'account_name');
+      if (name) map[name] = post._platform || null;
     }
-    return Array.from(accountNamesSet).sort();
+    return Object.entries(map)
+      .map(([name, platform]) => ({ name, platform }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [data]);
 
   const aggregatedData = useMemo(() => {
@@ -419,9 +422,12 @@ const PostTypeView = ({ data, selectedFields }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL_ACCOUNTS}>{allAccountsLabel}</SelectItem>
-                  {uniqueAccounts.map(account => (
-                    <SelectItem key={account} value={account}>
-                      {account}
+                  {uniqueAccounts.map(({ name, platform }) => (
+                    <SelectItem key={name} value={name}>
+                      <span className="flex items-center gap-2">
+                        {name}
+                        <PlatformBadge platform={platform} />
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

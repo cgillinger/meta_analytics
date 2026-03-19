@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import PlatformBadge from '../ui/PlatformBadge';
 import { Card } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet } from 'lucide-react';
@@ -49,23 +50,6 @@ const MAX_DESCRIPTION_LENGTH = 100;
 
 const getDisplayName = (field) => POST_VIEW_AVAILABLE_FIELDS[field] || DISPLAY_NAMES[field] || field;
 
-// Plattformsbadge per inlägg
-const PlatformBadge = ({ platform }) => {
-  if (!platform) return null;
-  const isFB = platform === 'facebook';
-  return (
-    <span
-      className={`inline-block px-1.5 py-0.5 text-xs font-medium rounded ${
-        isFB
-          ? 'bg-blue-100 text-blue-700'
-          : 'bg-pink-100 text-pink-700'
-      }`}
-    >
-      {isFB ? 'FB' : 'IG'}
-    </span>
-  );
-};
-
 // Inläggstyp-badge
 const PostTypeBadge = ({ type }) => {
   if (!type) return null;
@@ -92,25 +76,19 @@ const PostView = ({ data, selectedFields }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selectedAccount, setSelectedAccount] = useState(ALL_ACCOUNTS);
-  const [uniqueAccounts, setUniqueAccounts] = useState([]);
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
 
-  // Avgör om data innehåller blandade plattformar
-  const hasMixedPlatforms = React.useMemo(() => {
-    if (!Array.isArray(data)) return false;
-    const platforms = new Set(data.map(p => p._platform).filter(Boolean));
-    return platforms.size > 1;
-  }, [data]);
-
-  useEffect(() => {
-    if (data && Array.isArray(data)) {
-      const accountNamesSet = new Set();
-      for (const post of data) {
-        const accountName = getValue(post, 'account_name');
-        if (accountName) accountNamesSet.add(accountName);
-      }
-      setUniqueAccounts(Array.from(accountNamesSet).sort());
+  // Map accountName → platform (sista träff vinner om blandat)
+  const uniqueAccounts = useMemo(() => {
+    if (!data || !Array.isArray(data)) return [];
+    const map = {};
+    for (const post of data) {
+      const name = getValue(post, 'account_name');
+      if (name) map[name] = post._platform || null;
     }
+    return Object.entries(map)
+      .map(([name, platform]) => ({ name, platform }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [data]);
 
   useEffect(() => {
@@ -309,8 +287,13 @@ const PostView = ({ data, selectedFields }) => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_ACCOUNTS}>Alla konton</SelectItem>
-              {uniqueAccounts.map(account => (
-                <SelectItem key={account} value={account}>{account}</SelectItem>
+              {uniqueAccounts.map(({ name, platform }) => (
+                <SelectItem key={name} value={name}>
+                  <span className="flex items-center gap-2">
+                    {name}
+                    <PlatformBadge platform={platform} />
+                  </span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

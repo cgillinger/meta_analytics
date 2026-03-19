@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import PlatformBadge from '../ui/PlatformBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -198,14 +199,6 @@ const TrendAnalysisView = ({ data, meta }) => {
 
     Object.entries(monthlyGroups).forEach(([monthKey, accounts]) => {
       Object.entries(accounts).forEach(([accountId, accountInfo]) => {
-        if (!accountDataMap[accountId]) {
-          accountDataMap[accountId] = {
-            account_id: accountId,
-            account_name: accountInfo.account_name,
-            monthlyData: {}
-          };
-        }
-
         let totalLikes = 0, totalComments = 0, totalShares = 0;
         let totalClicks = 0, totalOtherClicks = 0, totalLinkClicks = 0;
         let totalViews = 0, totalReach = 0;
@@ -235,6 +228,15 @@ const TrendAnalysisView = ({ data, meta }) => {
           platformCounts[p] = (platformCounts[p] || 0) + 1;
         });
         const dominantPlatform = Object.entries(platformCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'instagram';
+
+        if (!accountDataMap[accountId]) {
+          accountDataMap[accountId] = {
+            account_id: accountId,
+            account_name: accountInfo.account_name,
+            _platform: dominantPlatform,
+            monthlyData: {}
+          };
+        }
 
         const interactions = totalLikes + totalComments + totalShares;
         let engagement;
@@ -291,6 +293,7 @@ const TrendAnalysisView = ({ data, meta }) => {
         return {
           account_id: account.account_id,
           account_name: account.account_name,
+          _platform: account._platform,
           color: CHART_COLORS[index % CHART_COLORS.length],
           points
         };
@@ -440,8 +443,9 @@ const TrendAnalysisView = ({ data, meta }) => {
                       onChange={() => handleAccountToggle(account.account_id)}
                       className="h-4 w-4 accent-blue-600"
                     />
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium flex items-center gap-1.5">
                       {account.account_name}
+                      <PlatformBadge platform={account._platform} />
                     </span>
                   </Label>
                 ))}
@@ -496,10 +500,11 @@ const TrendAnalysisView = ({ data, meta }) => {
                       className="w-3 h-3 rounded-full border flex-shrink-0"
                       style={{ backgroundColor: line.color }}
                     />
-                    <span className="text-sm font-medium truncate" title={line.account_name}>
+                    <span className="text-sm font-medium truncate flex items-center gap-1" title={line.account_name}>
                       {line.account_name.length > 20
                         ? line.account_name.substring(0, 17) + '...'
                         : line.account_name}
+                      <PlatformBadge platform={line._platform} />
                     </span>
                   </div>
                 ))}

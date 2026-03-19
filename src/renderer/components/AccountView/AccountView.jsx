@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import PlatformBadge from '../ui/PlatformBadge';
 import { Card } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Calculator, ExternalLink, Copy, Check } from 'lucide-react';
@@ -95,22 +96,6 @@ const ProfileIcon = ({ accountName }) => {
   );
 };
 
-// Plattformsbadge
-const PlatformBadge = ({ platform }) => {
-  if (!platform) return null;
-  const isFB = platform === 'facebook';
-  return (
-    <span
-      className={`ml-2 px-1.5 py-0.5 text-xs font-medium rounded ${
-        isFB
-          ? 'bg-blue-100 text-blue-700'
-          : 'bg-pink-100 text-pink-700'
-      }`}
-    >
-      {isFB ? 'FB' : 'IG'}
-    </span>
-  );
-};
 
 // Lista över fält som inte ska ha totalsumma
 const FIELDS_WITHOUT_TOTALS = [
@@ -294,12 +279,6 @@ const AccountView = ({ data, selectedFields }) => {
   const [pageSize, setPageSize] = useState(20);
   const [copyStatus, setCopyStatus] = useState({ field: null, rowId: null, copied: false });
 
-  // Avgör om data innehåller blandade plattformar
-  const hasMixedPlatforms = React.useMemo(() => {
-    if (!Array.isArray(data)) return false;
-    const platforms = new Set(data.map(p => p._platform).filter(Boolean));
-    return platforms.size > 1;
-  }, [data]);
 
   const summaryData = useMemo(() => {
     if (!data || !selectedFields || selectedFields.length === 0) return [];
@@ -704,9 +683,7 @@ const AccountView = ({ data, selectedFields }) => {
                     <div className="flex items-center space-x-2">
                       <ProfileIcon accountName={accountName} />
                       <span>{accountName || 'Unknown'}</span>
-                      {hasMixedPlatforms && (
-                        <PlatformBadge platform={account._platform} />
-                      )}
+                      <PlatformBadge platform={account._platform} />
                     </div>
                   </TableCell>
                   {selectedFields.map((field) => (
