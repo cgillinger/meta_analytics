@@ -470,7 +470,7 @@ const TrendAnalysisView = ({ data, meta }) => {
                       value={key}
                       checked={selectedMetric === key}
                       onChange={() => setSelectedMetric(key)}
-                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 accent-blue-600"
+                      className="h-4 w-4 border-gray-300 accent-primary"
                     />
                     <span className="text-sm">{label}</span>
                   </Label>
@@ -480,11 +480,11 @@ const TrendAnalysisView = ({ data, meta }) => {
           </div>
 
           {selectedMetric && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-              <h3 className="text-lg font-bold text-blue-900">
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 text-center">
+              <h3 className="text-lg font-bold text-primary">
                 Visar: {availableMetrics[selectedMetric]}
               </h3>
-              <p className="text-sm text-blue-700 mt-1">
+              <p className="text-sm text-primary/70 mt-1">
                 Utveckling över tid för valda konton
               </p>
             </div>

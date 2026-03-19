@@ -147,6 +147,11 @@ const MainView = ({ data, meta, onDataProcessed }) => {
 
   const hasMixedPlatforms = platformCounts.facebook > 0 && platformCounts.instagram > 0;
 
+  // Aktiv plattform för färgtema: Instagram-filter eller enbart Instagram-data → rosa tema
+  const activePlatform = hasMixedPlatforms
+    ? (platformFilter !== 'all' ? platformFilter : null)
+    : platform;
+
   const filteredData = useMemo(() => {
     if (!data || platformFilter === 'all') return data;
     return data.filter(post => post._platform === platformFilter);
@@ -244,7 +249,7 @@ const MainView = ({ data, meta, onDataProcessed }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-platform={activePlatform || undefined}>
       <ConfirmationDialog
         isOpen={resetDialogOpen}
         onConfirm={() => { setResetDialogOpen(false); setShowNewAnalysis(true); }}
@@ -314,8 +319,8 @@ const MainView = ({ data, meta, onDataProcessed }) => {
               onClick={() => setPlatformFilter(value)}
               className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
                 platformFilter === value
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-primary/60'
               }`}
             >
               {label}
