@@ -688,7 +688,7 @@ const AccountView = ({ data, selectedFields }) => {
                   <TableCell className="text-center">
                     <button
                       onClick={() => handleExternalLink(account)}
-                      className="inline-flex items-center justify-center text-blue-600 hover:text-blue-800"
+                      className="inline-flex items-center justify-center text-primary hover:text-primary/80"
                       title="Öppna i webbläsare"
                     >
                       <ExternalLink className="h-4 w-4" />
