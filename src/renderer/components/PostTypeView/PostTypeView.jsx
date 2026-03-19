@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, AlertCircle, PieChart as PieChartIcon, Copy, Check } from 'lucide-react';
@@ -155,8 +155,6 @@ const PostTypeView = ({ data, selectedFields }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selectedAccount, setSelectedAccount] = useState(ALL_ACCOUNTS);
-  const [uniqueAccounts, setUniqueAccounts] = useState([]);
-  const [aggregatedData, setAggregatedData] = useState([]);
   const [showOnlyReliable, setShowOnlyReliable] = useState(false);
   const [copyStatus, setCopyStatus] = useState({ field: null, rowId: null, copied: false });
 
@@ -182,31 +180,19 @@ const PostTypeView = ({ data, selectedFields }) => {
     });
   }, [selectedFields, hasFacebook, hasInstagram]);
 
-  // Get unique accounts from data
-  useEffect(() => {
-    if (data && Array.isArray(data)) {
-      try {
-        const accountNamesSet = new Set();
-        for (const post of data) {
-          const accountName = getValue(post, 'account_name');
-          if (accountName) {
-            accountNamesSet.add(accountName);
-          }
-        }
-        const accounts = Array.from(accountNamesSet).sort();
-        setUniqueAccounts(accounts);
-      } catch (error) {
-        console.error('Error fetching unique accounts:', error);
-      }
+  const uniqueAccounts = useMemo(() => {
+    if (!data || !Array.isArray(data)) return [];
+    const accountNamesSet = new Set();
+    for (const post of data) {
+      const accountName = getValue(post, 'account_name');
+      if (accountName) accountNamesSet.add(accountName);
     }
+    return Array.from(accountNamesSet).sort();
   }, [data]);
 
-  // Aggregate data when source data or selected account changes
-  useEffect(() => {
-    if (data && Array.isArray(data)) {
-      const aggregated = aggregateByPostType(data, selectedAccount);
-      setAggregatedData(aggregated);
-    }
+  const aggregatedData = useMemo(() => {
+    if (!data || !Array.isArray(data)) return [];
+    return aggregateByPostType(data, selectedAccount);
   }, [data, selectedAccount]);
 
   // Reset to first page when data, pageSize or selected account changes
@@ -312,16 +298,12 @@ const PostTypeView = ({ data, selectedFields }) => {
     );
   };
 
-  // Apply filtering based on user settings
-  const filteredAggregatedData = aggregatedData.filter(item => {
-    if (showOnlyReliable && !item.is_reliable) {
-      return false;
-    }
-    return true;
-  });
+  const filteredAggregatedData = useMemo(() => {
+    return aggregatedData.filter(item => !showOnlyReliable || item.is_reliable);
+  }, [aggregatedData, showOnlyReliable]);
 
   // Sort data
-  const sortedData = React.useMemo(() => {
+  const sortedData = useMemo(() => {
     if (!sortConfig.key || !filteredAggregatedData) return filteredAggregatedData;
 
     return [...filteredAggregatedData].sort((a, b) => {
@@ -344,7 +326,7 @@ const PostTypeView = ({ data, selectedFields }) => {
   }, [filteredAggregatedData, sortConfig]);
 
   // Paginate data
-  const paginatedData = React.useMemo(() => {
+  const paginatedData = useMemo(() => {
     if (!sortedData) return [];
     const startIndex = (currentPage - 1) * pageSize;
     return sortedData.slice(startIndex, startIndex + pageSize);

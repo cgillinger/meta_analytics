@@ -174,7 +174,13 @@ const MainView = ({ data, meta, onDataProcessed }) => {
 
   useEffect(() => {
     const availableFields = Object.keys(getAvailableFields());
-    setSelectedFields(prev => prev.filter(field => availableFields.includes(field)));
+    setSelectedFields(prev => {
+      const filtered = prev.filter(field => availableFields.includes(field));
+      if (filtered.length === prev.length && filtered.every((f, i) => f === prev[i])) {
+        return prev; // Samma referens = ingen re-render
+      }
+      return filtered;
+    });
   }, [activeView]);
 
   const handleDataUploaded = (newData) => {

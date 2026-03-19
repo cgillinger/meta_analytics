@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Calculator, ExternalLink, Copy, Check } from 'lucide-react';
@@ -292,9 +292,6 @@ const AccountView = ({ data, selectedFields }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [summaryData, setSummaryData] = useState([]);
-  const [totalSummary, setTotalSummary] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
   const [copyStatus, setCopyStatus] = useState({ field: null, rowId: null, copied: false });
 
   // Avgör om data innehåller blandade plattformar
@@ -304,98 +301,84 @@ const AccountView = ({ data, selectedFields }) => {
     return platforms.size > 1;
   }, [data]);
 
-  // Beräkna summerad data när data eller valda fält ändras
-  useEffect(() => {
-    if (!data || !selectedFields || selectedFields.length === 0) {
-      setSummaryData([]);
-      setTotalSummary({});
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const summary = summarizeByAccount(data, selectedFields);
-      setSummaryData(summary);
-
-      if (Array.isArray(summary) && summary.length > 0) {
-        const totals = { account_name: 'Totalt' };
-
-        let totalLikes = 0, totalComments = 0, totalShares = 0;
-        let totalSaves = 0, totalFollows = 0;
-        let totalClicks = 0, totalOtherClicks = 0, totalLinkClicks = 0;
-
-        if (Array.isArray(data)) {
-          data.forEach(post => {
-            totalLikes += (getValue(post, 'likes') || 0);
-            totalComments += (getValue(post, 'comments') || 0);
-            totalShares += (getValue(post, 'shares') || 0);
-            totalSaves += (getValue(post, 'saves') || 0);
-            totalFollows += (getValue(post, 'follows') || 0);
-            totalClicks += (getValue(post, 'total_clicks') || 0);
-            totalOtherClicks += (getValue(post, 'other_clicks') || 0);
-            totalLinkClicks += (getValue(post, 'link_clicks') || 0);
-          });
-        }
-
-        if (selectedFields.includes('likes')) totals.likes = totalLikes;
-        if (selectedFields.includes('comments')) totals.comments = totalComments;
-        if (selectedFields.includes('shares')) totals.shares = totalShares;
-        if (selectedFields.includes('saves')) totals.saves = totalSaves;
-        if (selectedFields.includes('follows')) totals.follows = totalFollows;
-        if (selectedFields.includes('total_clicks')) totals.total_clicks = totalClicks;
-        if (selectedFields.includes('other_clicks')) totals.other_clicks = totalOtherClicks;
-        if (selectedFields.includes('link_clicks')) totals.link_clicks = totalLinkClicks;
-
-        if (selectedFields.includes('interactions')) {
-          totals.interactions = totalLikes + totalComments + totalShares;
-        }
-
-        if (selectedFields.includes('engagement')) {
-          // För total engagement: summera från alla inlägg via getValue (respekterar _platform)
-          let engTotal = 0;
-          data.forEach(post => {
-            engTotal += (getValue(post, 'engagement') || 0);
-          });
-          totals.engagement = engTotal;
-        }
-
-        if (selectedFields.includes('post_count')) {
-          totals.post_count = data.length;
-        }
-
-        selectedFields.forEach(field => {
-          if ([
-            'likes', 'comments', 'shares', 'saves', 'follows',
-            'total_clicks', 'other_clicks', 'link_clicks',
-            'interactions', 'engagement', 'post_count'
-          ].includes(field) || FIELDS_WITHOUT_TOTALS.includes(field)) {
-            return;
-          }
-
-          if (field === 'views') {
-            let totalViews = 0;
-            data.forEach(post => {
-              totalViews += (getValue(post, field) || 0);
-            });
-            totals[field] = totalViews;
-          } else {
-            totals[field] = summary.reduce((sum, account) => {
-              return sum + (getValue(account, field) || 0);
-            }, 0);
-          }
-        });
-
-        setTotalSummary(totals);
-      }
-    } catch (error) {
-      console.error('Failed to load summary data:', error);
-      setSummaryData([]);
-      setTotalSummary({});
-    } finally {
-      setIsLoading(false);
-    }
+  const summaryData = useMemo(() => {
+    if (!data || !selectedFields || selectedFields.length === 0) return [];
+    return summarizeByAccount(data, selectedFields);
   }, [data, selectedFields]);
+
+  const totalSummary = useMemo(() => {
+    if (!Array.isArray(summaryData) || summaryData.length === 0) return {};
+
+    const totals = { account_name: 'Totalt' };
+
+    let totalLikes = 0, totalComments = 0, totalShares = 0;
+    let totalSaves = 0, totalFollows = 0;
+    let totalClicks = 0, totalOtherClicks = 0, totalLinkClicks = 0;
+
+    if (Array.isArray(data)) {
+      for (const post of data) {
+        totalLikes += (getValue(post, 'likes') || 0);
+        totalComments += (getValue(post, 'comments') || 0);
+        totalShares += (getValue(post, 'shares') || 0);
+        totalSaves += (getValue(post, 'saves') || 0);
+        totalFollows += (getValue(post, 'follows') || 0);
+        totalClicks += (getValue(post, 'total_clicks') || 0);
+        totalOtherClicks += (getValue(post, 'other_clicks') || 0);
+        totalLinkClicks += (getValue(post, 'link_clicks') || 0);
+      }
+    }
+
+    if (selectedFields.includes('likes')) totals.likes = totalLikes;
+    if (selectedFields.includes('comments')) totals.comments = totalComments;
+    if (selectedFields.includes('shares')) totals.shares = totalShares;
+    if (selectedFields.includes('saves')) totals.saves = totalSaves;
+    if (selectedFields.includes('follows')) totals.follows = totalFollows;
+    if (selectedFields.includes('total_clicks')) totals.total_clicks = totalClicks;
+    if (selectedFields.includes('other_clicks')) totals.other_clicks = totalOtherClicks;
+    if (selectedFields.includes('link_clicks')) totals.link_clicks = totalLinkClicks;
+
+    if (selectedFields.includes('interactions')) {
+      totals.interactions = totalLikes + totalComments + totalShares;
+    }
+
+    if (selectedFields.includes('engagement')) {
+      let engTotal = 0;
+      if (Array.isArray(data)) {
+        for (const post of data) {
+          engTotal += (getValue(post, 'engagement') || 0);
+        }
+      }
+      totals.engagement = engTotal;
+    }
+
+    if (selectedFields.includes('post_count')) {
+      totals.post_count = Array.isArray(data) ? data.length : 0;
+    }
+
+    for (const field of selectedFields) {
+      if ([
+        'likes', 'comments', 'shares', 'saves', 'follows',
+        'total_clicks', 'other_clicks', 'link_clicks',
+        'interactions', 'engagement', 'post_count'
+      ].includes(field) || FIELDS_WITHOUT_TOTALS.includes(field)) {
+        continue;
+      }
+
+      if (field === 'views') {
+        let totalViews = 0;
+        if (Array.isArray(data)) {
+          for (const post of data) {
+            totalViews += (getValue(post, field) || 0);
+          }
+        }
+        totals[field] = totalViews;
+      } else {
+        totals[field] = summaryData.reduce((sum, account) => sum + (getValue(account, field) || 0), 0);
+      }
+    }
+
+    return totals;
+  }, [summaryData, selectedFields, data]);
 
   // Återställ till första sidan när data eller pageSize ändras
   useEffect(() => {
@@ -620,16 +603,6 @@ const AccountView = ({ data, selectedFields }) => {
       <Card className="p-6">
         <p className="text-center text-muted-foreground">
           Välj värden att visa i tabellen ovan
-        </p>
-      </Card>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <Card className="p-6">
-        <p className="text-center text-muted-foreground">
-          Laddar data...
         </p>
       </Card>
     );
