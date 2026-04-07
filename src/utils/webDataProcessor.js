@@ -91,7 +91,14 @@ function mapColumnNames(row, columnMappings) {
         break;
       }
     }
-    mappedRow[internalName || originalCol] = value;
+    const key = internalName || originalCol;
+    // If this internal field already has a non-empty value, only overwrite
+    // with another non-empty value. Handles CSVs with duplicate SV+EN columns
+    // where the English column may be empty (null via dynamicTyping).
+    if (internalName && key in mappedRow && mappedRow[key] != null && mappedRow[key] !== '') {
+      if (value == null || value === '') return;
+    }
+    mappedRow[key] = value;
   });
   return mappedRow;
 }
