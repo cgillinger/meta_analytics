@@ -271,7 +271,7 @@ const TrendAnalysisView = ({ data, meta }) => {
     return {
       months: sortedMonths,
       accountData: Object.values(accountDataMap).sort((a, b) =>
-        a.account_name.localeCompare(b.account_name)
+        a.account_name.localeCompare(b.account_name, 'sv')
       )
     };
   }, [data]);

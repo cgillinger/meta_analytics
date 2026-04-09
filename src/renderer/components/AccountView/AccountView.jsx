@@ -314,7 +314,8 @@ const AccountView = ({ data, selectedFields }) => {
 
   const summaryData = useMemo(() => {
     if (!data || !selectedFields || selectedFields.length === 0) return [];
-    return summarizeByAccount(data, selectedFields);
+    const result = summarizeByAccount(data, selectedFields);
+    return result.sort((a, b) => a.account_name.localeCompare(b.account_name, 'sv'));
   }, [data, selectedFields]);
 
   const totalSummary = useMemo(() => {
