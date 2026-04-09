@@ -114,7 +114,7 @@ const PostView = ({ data, selectedFields }) => {
     }
     return Object.entries(map)
       .map(([name, info]) => ({ name, platform: info.platform, isCollab: info.isCollab }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   }, [data]);
 
   useEffect(() => {
