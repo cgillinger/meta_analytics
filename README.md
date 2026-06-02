@@ -136,6 +136,12 @@ All data stannar lokalt i din webbläsare. Inga CSV-filer eller statistikvärden
 
 ---
 
+## Om projektet
+
+Det här är ett personligt hobbyprojekt som jag byggt för eget bruk och lagt upp ifall det är till nytta för någon annan. Jag jobbar på det på fritiden, så issues och PR:ar är välkomna men svar kan dröja. Använd på egen risk.
+
+---
+
 ## Licens
 
 MIT © cgillinger
